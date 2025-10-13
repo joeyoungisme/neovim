@@ -93,7 +93,7 @@ return {
     keys = { { "<C-n>", mode = { "n", "x" }, desc = "VM Find Under" } },
   },
 
-  -- Avante（照你原本）
+  -- Avante（整理後、穩定版）
   {
     "yetone/avante.nvim",
     event = "VeryLazy",
@@ -104,111 +104,95 @@ return {
       "nvim-tree/nvim-web-devicons",
     },
     config = function()
+      -------------------------------------------------------------------
+      -- 安全補丁（修 fast event 錯誤、包裝 ACP callback 等）
+      -------------------------------------------------------------------
+      local ok_fastfix, fastfix_err = pcall(require, "configs.avante_fastfix")
+      if not ok_fastfix then
+        vim.schedule(function()
+          vim.notify("avante_fastfix 載入失敗: " .. tostring(fastfix_err), vim.log.levels.WARN)
+        end)
+      end
 
-      -- for OpenAI
---    require("avante").setup({
---    provider = "openai",  -- default provider
---    providers = {
---      openai = {
---        __inherited_from = "openai",
---        api_key = os.getenv("OPENAI_API_KEY"), -- put your sk-proj-... here
---        endpoint = "https://api.openai.com/v1", -- explicit endpoint
---        model = "gpt-5-nano",  -- exactly what your curl example uses
---        extra_request_body = {
---          temperature = 0.2,
---          max_tokens = 4096,
---        },
---      },
---    },
---  })
-    --  for Claude
-    require("avante").setup({
       -------------------------------------------------------------------
-      -- 這一段是「直連 Claude API」的設定 (你目前使用的方式)
-      -- provider = "claude",
-      -- mode = "agentic",
-      -- providers = {
-      --   claude = {
-      --     endpoint = "https://api.anthropic.com",
-      --     model = "claude-sonnet-4-20250514", -- 模型 ID，取決於你帳號可用的版本
-      --     timeout = 30000,
-      --     disable_tools = true,  -- 關閉自動工具/跨檔操作
-      --     extra_request_body = {
-      --       temperature = 0.2,
-      --       max_tokens = 4096,
-      --     },
-      --   },
-      -- },
-      -- system = [[
-      -- 1) 只能針對當前專案( Project )的檔案進行修改
-      -- 2) 禁止存取或修改專案根目錄之外的任何路徑。
-      -- ]]
+      -- Avante 主設定
+      -- 預設使用 ACP（Claude Code），你可以用命令一鍵切換
       -------------------------------------------------------------------
-    
-      -------------------------------------------------------------------
-      -- 這一段是「ACP provider」(Claude Code CLI) 的設定
-      -------------------------------------------------------------------
-      -- default to ACP (Claude Code); you can switch at runtime
-      provider = "claude-code",
-      mode = "agentic",
-    
-      -------------------------------------------------------------------
-      -- ACP providers (external agents, e.g. Claude Code)
-      -------------------------------------------------------------------
-      acp_providers = {
-        ["claude-code"] = {
-          command = "npx",
-          args = { "@zed-industries/claude-code-acp" },
-          env = {
-            NODE_NO_WARNINGS = "1",
-            ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY"),
-          },
-        },
-      },
-    
-      -------------------------------------------------------------------
-      -- HTTP providers (direct API; put OLLAMA here, not in acp_providers)
-      -------------------------------------------------------------------
-      providers = {
-        ["ollama-llama3"] = {
-          __inherited_from = "ollama",
-          endpoint = "http://192.168.1.101:11434",
-          model = "llama3:latest",
-          timeout = 30000,
-          extra_request_body = {
-            options = {
-              temperature = 0,
-              num_predict = 2048,
+      local ok_avante, avante = pcall(require, "avante")
+      if not ok_avante then
+        vim.schedule(function()
+          vim.notify("avante.nvim 載入失敗，請確認插件安裝是否成功", vim.log.levels.ERROR)
+        end)
+        return
+      end
+
+      avante.setup({
+        -- 預設使用 ACP（Claude Code）
+        provider = "claude-code",
+        mode = "agentic",
+
+        -----------------------------------------------------------------
+        -- ACP providers（外部 Agent / CLI）
+        -----------------------------------------------------------------
+        acp_providers = {
+          ["claude-code"] = {
+            command = "npx",
+            args = { "@zed-industries/claude-code-acp" },
+            -- 這裡的 env 在 fast event 期間不會用到 vim.fn.getenv（已由 fastfix 處理）
+            env = {
+              NODE_NO_WARNINGS = "1",
+              -- 建議在你的 shell 啟動檔先 export，這裡只是透傳
+              ANTHROPIC_API_KEY = vim.env.ANTHROPIC_API_KEY or os.getenv("ANTHROPIC_API_KEY"),
             },
           },
         },
-        ["ollama-qwen"] = {
-          __inherited_from = "ollama",
-          endpoint = "http://192.168.1.101:11434",
-          model = "qwen2.5-coder:7b",
-          timeout = 30000,
-          extra_request_body = {
-            options = {
-              temperature = 0,
-              num_predict = 2048,
+
+        -----------------------------------------------------------------
+        -- HTTP providers（直連 API；Ollama 請放這裡）
+        -----------------------------------------------------------------
+        providers = {
+          ["ollama-llama3"] = {
+            __inherited_from = "ollama",
+            endpoint = "http://192.168.1.101:11434",
+            model = "llama3:latest",
+            timeout = 30000,
+            extra_request_body = {
+              options = { temperature = 0, num_predict = 2048 },
             },
           },
-        },
-        ["ollama-codellama"] = {
-          __inherited_from = "ollama",
-          endpoint = "http://192.168.1.101:11434",
-          model = "codellama:7b",
-          timeout = 30000,
-          extra_request_body = {
-            options = {
-              temperature = 0,
-              num_predict = 2048,
+          ["ollama-qwen"] = {
+            __inherited_from = "ollama",
+            endpoint = "http://192.168.1.101:11434",
+            model = "qwen2.5-coder:7b",
+            timeout = 30000,
+            extra_request_body = {
+              options = { temperature = 0, num_predict = 2048 },
             },
           },
+          ["ollama-codellama"] = {
+            __inherited_from = "ollama",
+            endpoint = "http://192.168.1.101:11434",
+            model = "codellama:7b",
+            timeout = 30000,
+            extra_request_body = {
+              options = { temperature = 0, num_predict = 2048 },
+            },
+          },
+
+          -- （可選）OpenAI 直連：如需切回 OpenAI，可在這裡開啟
+          -- ["openai-direct"] = {
+          --   __inherited_from = "openai",
+          --   api_key = vim.env.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY"),
+          --   endpoint = "https://api.openai.com/v1",
+          --   model = "gpt-5-nano",
+          --   extra_request_body = { temperature = 0.2, max_tokens = 4096 },
+          -- },
         },
-      },
-    
-      system = [[
+
+        -----------------------------------------------------------------
+        -- System 提示（維持你原本的規範）
+        -----------------------------------------------------------------
+        system = [[
           角色：你是資深 C 系統工程師，專長網路 I/O、epoll、非阻塞 socket 與可攜性建構。
           任務：先讀專案根目錄的 avante.md（或 Agent.md），未經確認不可假設未明規格。
 
@@ -224,100 +208,108 @@ return {
           如遇模糊處，一律提出 2–3 個選項（含利弊與推薦）再往下走
           回覆以條列、短句為主，拒絕一次輸出過大不可審查的內容
           風格：使用「必須/不得/應該」等規格語氣；章節清晰、帶小標題與核對清單
-      ]],
-    })
+        ]],
+      })
 
-    -------------------------------------------------------------------
-    -- 額外功能：匯出 AvanteChat 紀錄
-    -------------------------------------------------------------------
-    -- 取專案根：優先用 git root，否則用 cwd
-    local function project_root()
-      local git_root = vim.fn.systemlist("git rev-parse --show-toplevel")[1]
-      if vim.v.shell_error == 0 and git_root and #git_root > 0 then
-        return git_root
-      else
-        return vim.fn.getcwd()
-      end
-    end
-    
-    -- 將當前 avante-chat buffer 的內容匯出為 markdown
-    vim.api.nvim_create_user_command("AvanteExportChat", function()
-      local buf = vim.api.nvim_get_current_buf()
-      local ft  = vim.bo[buf].filetype
-      if ft ~= "Avante" then
-        vim.notify("請在 Avante Chat 視窗裡執行 :AvanteExportChat（目前 ft=" .. tostring(ft) .. "）", vim.log.levels.WARN)
-        return
-      end
-    
-      -- 讀取所有行（不會修改 buffer，不需要 modifiable=true）
-      local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
-    
-      -- 準備輸出目錄與檔名
-      local root = project_root()
-      local log_dir = root .. "/.avante_logs"
-      vim.fn.mkdir(log_dir, "p")
-      local filename = string.format("%s/chat_%s.md", log_dir, os.date("%Y%m%d_%H%M%S"))
-    
-      -- 直接寫檔：不觸發 BufWritePre/BufWritePost，也不依賴當前 buffer 狀態
-      local ok, err = pcall(vim.fn.writefile, lines, filename, "b")
-      if not ok then
-        vim.notify("寫檔失敗: " .. tostring(err), vim.log.levels.ERROR)
-        return
-      end
-    
-      vim.notify("✅ Avante chat 已匯出到： " .. filename, vim.log.levels.INFO)
-    end, {})
-  
-    -------------------------------------------------------------------
-    -- 額外功能：批次對資料夾檔案呼叫 AvanteEdit
-    -------------------------------------------------------------------
-    local function AvanteBatchEdit(dir, pattern, instr)
-      local files = vim.fn.globpath(dir, pattern, false, true)
-      for _, f in ipairs(files) do
-        vim.cmd("edit " .. vim.fn.fnameescape(f))
-        vim.cmd("normal! ggVG")
-        vim.cmd('AvanteEdit ' .. instr)
-      end
-    end
-  
-    vim.api.nvim_create_user_command("AvanteBatchEdit", function(opts)
-      local args = vim.split(opts.args, " ")
-      local dir = args[1]
-      local pattern = args[2]
-      local instr = table.concat(args, " ", 3)
-      AvanteBatchEdit(dir, pattern, instr)
-    end, { nargs = "+" })
-
-    vim.api.nvim_create_user_command("AvanteClose", function()
-      for _, win in ipairs(vim.api.nvim_list_wins()) do
-        local buf = vim.api.nvim_win_get_buf(win)
-        local ft = vim.api.nvim_buf_get_option(buf, "filetype")
-        if ft == "avante-chat" then
-          vim.api.nvim_win_close(win, true)
+      -------------------------------------------------------------------
+      -- 自訂指令：匯出 Avante Chat（辨識 avante-chat/Avante 兩種 ft）
+      -------------------------------------------------------------------
+      local function project_root()
+        local git_root = vim.fn.systemlist("git rev-parse --show-toplevel")[1]
+        if vim.v.shell_error == 0 and git_root and #git_root > 0 then
+          return git_root
+        else
+          return vim.fn.getcwd()
         end
       end
-      print("✅ Avante Chat 視窗已全部關閉")
-    end, {})
 
-    -- 一鍵切 Ollama + legacy（不走 ACP，並斷掉 ACP 連線）
-    vim.api.nvim_create_user_command("AvOllamaLegacy", function()
-      -- 先切模式，避免進 ACP 路徑
-      require("avante.config").override({ mode = "legacy" })
-      -- 切換到你的 Ollama provider（這裡用 qwen；也可改成你想要的 ollama-llama3）
-      require("avante.api").switch_provider("ollama-qwen")
-      -- 雙保險：把 ACP 客戶端斷掉，避免背景訊息再進來
-      pcall(function() require("avante.libs.acp_client").disconnect() end)
-      vim.notify("Avante → provider=ollama-qwen, mode=legacy (ACP disabled)", vim.log.levels.INFO)
-    end, {})
-    
-    -- 一鍵切回 Claude Code（ACP）+ agentic
-    vim.api.nvim_create_user_command("AvClaudeAgentic", function()
-      require("avante.config").override({ mode = "agentic" })
-      require("avante.api").switch_provider("claude-code")
-      vim.notify("Avante → provider=claude-code, mode=agentic (ACP enabled)", vim.log.levels.INFO)
-    end, {})
+      vim.api.nvim_create_user_command("AvanteExportChat", function()
+        local buf = vim.api.nvim_get_current_buf()
+        local ft  = vim.bo[buf].filetype
+        if ft ~= "avante-chat" and ft ~= "Avante" then
+          vim.notify("請在 Avante Chat 視窗裡執行 :AvanteExportChat（目前 ft=" .. tostring(ft) .. "）", vim.log.levels.WARN)
+          return
+        end
 
+        local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+        local root = project_root()
+        local log_dir = root .. "/.avante_logs"
+        vim.fn.mkdir(log_dir, "p")
+        local filename = string.format("%s/chat_%s.md", log_dir, os.date("%Y%m%d_%H%M%S"))
+
+        local ok, err = pcall(vim.fn.writefile, lines, filename, "b")
+        if not ok then
+          vim.notify("寫檔失敗: " .. tostring(err), vim.log.levels.ERROR)
+          return
+        end
+        vim.notify("✅ Avante chat 已匯出到： " .. filename, vim.log.levels.INFO)
+      end, {})
+
+      -------------------------------------------------------------------
+      -- 自訂指令：批次呼叫 AvanteEdit（保留你的功能）
+      -------------------------------------------------------------------
+      local function AvanteBatchEdit(dir, pattern, instr)
+        local files = vim.fn.globpath(dir, pattern, false, true)
+        for _, f in ipairs(files) do
+          -- 避免在 fast event 內做大量編輯，確保在主迴圈執行
+          vim.schedule(function()
+            vim.cmd.edit(vim.fn.fnameescape(f))
+            vim.cmd("normal! ggVG")
+            -- 加上 pcall，避免單檔失敗中斷整批
+            pcall(vim.cmd, 'AvanteEdit ' .. instr)
+          end)
+        end
+      end
+
+      vim.api.nvim_create_user_command("AvanteBatchEdit", function(opts)
+        local args = vim.split(opts.args, " ")
+        local dir = args[1]
+        local pattern = args[2]
+        local instr = table.concat(args, " ", 3)
+        AvanteBatchEdit(dir, pattern, instr)
+      end, { nargs = "+" })
+
+      -------------------------------------------------------------------
+      -- 自訂指令：關閉所有 Avante Chat 視窗
+      -------------------------------------------------------------------
+      vim.api.nvim_create_user_command("AvanteClose", function()
+        for _, win in ipairs(vim.api.nvim_list_wins()) do
+          local buf = vim.api.nvim_win_get_buf(win)
+          local ft = vim.bo[buf].filetype
+          if ft == "avante-chat" or ft == "Avante" then
+            pcall(vim.api.nvim_win_close, win, true)
+          end
+        end
+        print("✅ Avante Chat 視窗已全部關閉")
+      end, {})
+
+      -------------------------------------------------------------------
+      -- 一鍵切換 Provider / 模式（加強穩定性）
+      -------------------------------------------------------------------
+      vim.api.nvim_create_user_command("AvOllamaLegacy", function()
+        local ok_cfg, cfg = pcall(require, "avante.config")
+        if ok_cfg then cfg.override({ mode = "legacy" }) end
+
+        local ok_api, api = pcall(require, "avante.api")
+        if ok_api then api.switch_provider("ollama-qwen") end
+
+        -- 雙保險：嘗試把 ACP 客戶端斷掉，避免背景訊息再進來
+        pcall(function() require("avante.libs.acp_client").disconnect() end)
+
+        vim.notify("Avante → provider=ollama-qwen, mode=legacy (ACP disabled)", vim.log.levels.INFO)
+      end, {})
+
+      vim.api.nvim_create_user_command("AvClaudeAgentic", function()
+        local ok_cfg, cfg = pcall(require, "avante.config")
+        if ok_cfg then cfg.override({ mode = "agentic" }) end
+
+        local ok_api, api = pcall(require, "avante.api")
+        if ok_api then api.switch_provider("claude-code") end
+
+        vim.notify("Avante → provider=claude-code, mode=agentic (ACP enabled)", vim.log.levels.INFO)
+      end, {})
     end,
   },
+
 }
 
