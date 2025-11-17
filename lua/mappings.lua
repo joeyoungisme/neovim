@@ -67,43 +67,43 @@ local function cword() return vim.fn.expand("<cword>") end
 local function cfile() return vim.fn.expand("<cfile>") end
 
 -- zs: cscope "s" (symbol) → 在整個 workspace 搜尋符號名稱
-vim.keymap.set("n", "zs", function()
+vim.keymap.set("n", "ls", function()
   tb.lsp_workspace_symbols({ query = cword() })       -- 以當前單字為查詢
 end, { silent = true, desc = "LSP: workspace symbol search" })
 
 -- zg: cscope "g" (definition) → 跳到定義
-vim.keymap.set("n", "zg", lsp.definition,
+vim.keymap.set("n", "lg", lsp.definition,
   { silent = true, desc = "LSP: go to definition" })
 
 -- zc: cscope "c" (callers) → 誰呼叫我（Incoming Calls）
-vim.keymap.set("n", "zc", function()
+vim.keymap.set("n", "lc", function()
   -- 需要 clangd 支援 callHierarchy
   tb.lsp_incoming_calls()
 end, { silent = true, desc = "LSP: incoming calls (callers)" })
 
 -- zd: cscope "d" (callee) → 我呼叫誰（Outgoing Calls）
-vim.keymap.set("n", "zd", function()
+vim.keymap.set("n", "ld", function()
   tb.lsp_outgoing_calls()
 end, { silent = true, desc = "LSP: outgoing calls (callees)" })
 
 -- zt: cscope "t" (text) → 全域文字搜尋（以當前字）
-vim.keymap.set("n", "zt", function()
+vim.keymap.set("n", "lt", function()
   tb.live_grep({ default_text = cword() })
 end, { silent = true, desc = "Text search (ripgrep)" })
 
 -- ze: cscope "e" (egrep) → 正則文字搜尋（給你輸入 regex；預填目前字）
-vim.keymap.set("n", "ze", function()
+vim.keymap.set("n", "le", function()
   tb.live_grep({ default_text = cword(), additional_args = { "--pcre2" } })
 end, { silent = true, desc = "Regex search (egrep-like)" })
 
 -- zf: cscope "f" (filename) → 找檔案（以 <cfile> 預填）
-vim.keymap.set("n", "zf", function()
+vim.keymap.set("n", "lf", function()
   tb.find_files({ default_text = cfile() })
 end, { silent = true, desc = "Find file by name" })
 
 -- zi: cscope "i" (includes) → 搜尋包含此檔/標頭的 #include（近似）
 -- zi: search who includes this file/header
-vim.keymap.set("n", "zi", function()
+vim.keymap.set("n", "li", function()
   local f = cfile()
   if f == nil or f == "" then f = cword() end
   tb.live_grep({
@@ -152,3 +152,33 @@ vim.keymap.set("n", "<leader>du", function() dapui.toggle() end,
 -- Evaluate 表達式（浮窗）
 vim.keymap.set("n", "<leader>de", function() require("dap.ui.widgets").hover() end,
   { desc = "DAP: Evaluate Expression" })
+
+
+-- 保留 z* 作為 cscope 快捷鍵
+-- s: symbol、g: definition、c: callers、d: callees、t: text
+vim.keymap.set("n", "zs", function()
+  vim.cmd("Cscope find s " .. cword())
+end, { silent = true, desc = "cscope: find symbol" })
+
+vim.keymap.set("n", "zg", function()
+  vim.cmd("Cscope find g " .. cword())
+end, { silent = true, desc = "cscope: go to definition" })
+
+vim.keymap.set("n", "zc", function()
+  vim.cmd("Cscope find c " .. cword())
+end, { silent = true, desc = "cscope: callers" })
+
+vim.keymap.set("n", "zd", function()
+  vim.cmd("Cscope find d " .. cword())
+end, { silent = true, desc = "cscope: callees" })
+
+vim.keymap.set("n", "zt", function()
+  vim.cmd("Cscope find t " .. cword())
+end, { silent = true, desc = "cscope: text search" })
+
+-- （可選）視覺模式：直接用選取字串搜尋
+vim.keymap.set("x", "zs", function()
+  local sel = vim.fn.escape(vim.fn.getreg("v", 1, true), " ")
+  vim.cmd("Cscope find s " .. sel)
+end, { silent = true, desc = "cscope: find symbol (visual)" })
+

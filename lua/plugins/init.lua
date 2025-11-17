@@ -75,7 +75,22 @@ return {
   },
 
   -- Telescope（用於 LSP 導航）
-  { "nvim-telescope/telescope.nvim", branch = "0.1.x" },
+  -- { "nvim-telescope/telescope.nvim", branch = "0.1.x" },
+  {
+    "nvim-telescope/telescope.nvim",
+    branch = "0.1.x",            -- 如果你本來就有指定版本，維持原來的即可
+    dependencies = { "nvim-lua/plenary.nvim" },
+    cmd = { "Telescope" },       -- 只在呼叫時載入（也可拿掉，變成常駐）
+    config = function()
+      -- 所有詳細設定放在這個檔案
+      require("configs.telescope")
+    end,
+  },
+  {
+    "rbmarliere/telescope-cscope.nvim",
+    dependencies = { "nvim-telescope/telescope.nvim", "dhananjaylatkar/cscope_maps.nvim" },
+    lazy = true,
+  },
 
   -- DAP（可選）
   {
@@ -308,6 +323,23 @@ return {
 
         vim.notify("Avante → provider=claude-code, mode=agentic (ACP enabled)", vim.log.levels.INFO)
       end, {})
+    end,
+  },
+  {
+    "dhananjaylatkar/cscope_maps.nvim",
+    lazy = false,
+    dependencies = {
+      "nvim-telescope/telescope.nvim", -- optional [for picker="telescope"]
+      "ibhagwan/fzf-lua", -- optional [for picker="fzf-lua"]
+      "echasnovski/mini.pick", -- optional [for picker="mini-pick"]
+      "folke/snacks.nvim", -- optional [for picker="snacks"]
+    },
+    opts = {
+      -- USE EMPTY FOR DEFAULT OPTIONS
+      -- DEFAULTS ARE LISTED BELOW
+    },
+    config = function()
+      require("configs.cscope")
     end,
   },
 
