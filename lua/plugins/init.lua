@@ -45,12 +45,33 @@ return {
   -- 符號側欄（可選）
   {
     "stevearc/aerial.nvim",
-    opts = {
-      backends = { "lsp", "treesitter", "markdown" },
-      layout = { default_direction = "left", min_width = 32 },
-      filter_kind = false,
-      attach_mode = "global",
-    },
+    event = "VeryLazy", -- 開啟 Neovim 一段時間後，再載入（避免拖慢啟動）
+    config = function()
+      require("aerial").setup({
+        -- 用 LSP 當後端（你有 clangd 就 OK）
+        backends = { "lsp", "treesitter", "markdown" },
+
+        -- 自動 attach 到所有支援的 buffer（含 C / H 檔）
+        attach_mode = "global",
+
+        -- 左側顯示的大綱視窗設定
+        layout = {
+          default_direction = "left", -- 重點：開在左邊
+          placement = "window",       -- 相對於目前視窗
+          min_width = 30,
+          max_width = 40,
+        },
+
+        -- 游標跳到某個 symbol 時，幫你 highlight 那一行
+        highlight_on_jump = true,
+
+        -- 不幫你動 folds（你有自己在用 zc/zo 就不用它管）
+        manage_folds = false,
+      })
+
+      -- 可選：啟動時自動註冊 aerial 為 LSP 的 outline provider
+      -- 如果你 LSP 已經正常運作，就不用特別動這裡
+    end,
   },
 
   -- Mason & Mason-lspconfig

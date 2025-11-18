@@ -14,7 +14,7 @@ cscope_maps.setup({
     picker = "telescope",
     project_rooter = { enable = true, change_cwd = false },
     db_build_cmd = { script = "default", args = { "-bqkv" } }, -- 自動在專案根建
-    -- skip_picker_for_single_result = true,
+    skip_picker_for_single_result = true,
   },
 })
 

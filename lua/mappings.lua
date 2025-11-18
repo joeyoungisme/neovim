@@ -26,10 +26,14 @@ vim.api.nvim_create_autocmd("User", {
   end,
 })
 
+vim.keymap.set("n", "<F8>", "<cmd>AerialToggle!<CR>", {
+  desc = "Toggle Aerial outline",
+  silent = true,
+})
+
 -- F9：切換右側檔案樹（nvim-tree）
 vim.keymap.set("n", "<F9>", ":NvimTreeToggle<CR>", { silent = true, desc = "Toggle File Tree (Right)" })
 
--- F10：切換左側符號大綱（aerial）
 -- F10: 打開 nvim-tree 在右邊，並且聚焦到目前檔案
 vim.keymap.set("n", "<F10>", function()
   local api = require("nvim-tree.api")
