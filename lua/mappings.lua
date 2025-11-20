@@ -7,22 +7,76 @@ local map = vim.keymap.set
 map("n", ";", ":", { desc = "CMD enter command mode" })
 map("i", "jk", "<ESC>")
 
--- map({ "n", "i", "v" }, "<C-s>", "<cmd> w <cr>")
-vim.api.nvim_create_autocmd("User", {
-  pattern = "VeryLazy",  -- lazy.nvim 完成後
-  callback = function()
-    -- 1) 確保外掛載入（用 lazy.nvim 的程式化載入）
-    pcall(function()
-      require("lazy").load({ plugins = { "vim-visual-multi" } })
+-- 先清掉任何人佔用 <C-n>
+pcall(vim.keymap.del, "n", "<C-n>")
+pcall(vim.keymap.del, "x", "<C-n>")
+
+-- 
+local function setup_multicursor()
+  local ok, mc = pcall(require, "multicursor-nvim")
+  if not ok then
+    return  -- plugin 還沒載入就直接退出，避免報錯
+  end
+
+  local set = vim.keymap.set
+
+  -- Add or skip cursor above/below the main cursor.
+  set({ "n", "x" }, "<up>", function() mc.lineAddCursor(-1) end)
+  set({ "n", "x" }, "<down>", function() mc.lineAddCursor(1) end)
+  set({ "n", "x" }, "<leader><up>", function() mc.lineSkipCursor(-1) end)
+  set({ "n", "x" }, "<leader><down>", function() mc.lineSkipCursor(1) end)
+
+  -- ⚠️ 小提醒：
+  -- <C-N> / <C-S> 在很多 terminal 是抓不到的，或跟 <C-n> <C-s> 混在一起
+  -- 這裡先照你原本的寫，如果覺得怪可以之後改成 <C-n>/<C-p>/<M-...> 等
+  -- Add or skip adding a new cursor by matching word/selection
+  set({ "n", "x" }, "<C-n>", function() mc.matchAddCursor(1) end)
+  set({ "n", "x" }, "<C-p>", function() mc.matchAddCursor(-1) end)    -- 上一個
+  set({ "n", "x" }, "<M-n>", function() mc.matchSkipCursor(1) end)    -- Alt+n
+  set({ "n", "x" }, "<M-p>", function() mc.matchSkipCursor(-1) end)   -- Alt+p
+
+  -- Add and remove cursors with control + left click.
+  set("n", "<c-leftmouse>", mc.handleMouse)
+  set("n", "<c-leftdrag>", mc.handleMouseDrag)
+  set("n", "<c-leftrelease>", mc.handleMouseRelease)
+
+  -- Disable and enable cursors.
+  set({ "n", "x" }, "<c-q>", mc.toggleCursor)
+
+  -- Mappings only active when multicursor is enabled.
+  mc.addKeymapLayer(function(layerSet)
+    -- Select a different cursor as the main one.
+    layerSet({ "n", "x" }, "<left>", mc.prevCursor)
+    layerSet({ "n", "x" }, "<right>", mc.nextCursor)
+
+    -- Delete the main cursor.
+    layerSet({ "n", "x" }, "<leader>x", mc.deleteCursor)
+
+    -- Enable and clear cursors using escape.
+    layerSet("n", "<esc>", function()
+      if not mc.cursorsEnabled() then
+        mc.enableCursors()
+      else
+        mc.clearCursors()
+      end
     end)
+  end)
 
-    -- 2) 可選：確認 <Plug> 真的存在（你也可以在命令列用 :verbose nmap <Plug>(VM-Find-Under) 看）
-    -- 3) 先清掉任何人佔用 <C-n>
-    pcall(vim.keymap.del, "n", "<C-n>")
-    pcall(vim.keymap.del, "x", "<C-n>")
+  -- Customize how cursors look.
+  local hl = vim.api.nvim_set_hl
+  hl(0, "MultiCursorCursor", { reverse = true })
+  hl(0, "MultiCursorVisual", { link = "Visual" })
+  hl(0, "MultiCursorSign", { link = "SignColumn" })
+  hl(0, "MultiCursorMatchPreview", { link = "Search" })
+  hl(0, "MultiCursorDisabledCursor", { reverse = true })
+  hl(0, "MultiCursorDisabledVisual", { link = "Visual" })
+  hl(0, "MultiCursorDisabledSign", { link = "SignColumn" })
+end
 
-    -- 4) 重新綁定到 <Plug>（一定要 remap = true）
-    vim.keymap.set({ "n", "x" }, "<C-n>", "<Plug>(VM-Find-Under)", { silent = true, remap = true })
+vim.api.nvim_create_autocmd("User", {
+  pattern = "VeryLazy",
+  callback = function()
+    setup_multicursor()
   end,
 })
 

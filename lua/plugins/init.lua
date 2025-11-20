@@ -124,9 +124,17 @@ return {
   { "theHamsta/nvim-dap-virtual-text", opts = { commented = true } },
 
   -- 多光標（可選）
+--{
+--  "mg979/vim-visual-multi",
+--  keys = { { "<C-n>", mode = { "n", "x" }, desc = "VM Find Under" } },
   {
-    "mg979/vim-visual-multi",
-    keys = { { "<C-n>", mode = { "n", "x" }, desc = "VM Find Under" } },
+    "jake-stewart/multicursor.nvim",
+    lazy = false,
+    branch = "1.0",
+    config = function()
+        local mc = require("multicursor-nvim")
+        mc.setup()
+    end
   },
 
   -- Avante（整理後、穩定版）
